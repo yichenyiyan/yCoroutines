@@ -214,14 +214,14 @@ ycor_share_stack_t* ycor_share_stack_new2(size_t sz, char guard_page_enabled) {
     if (guard_page_enabled != 0) {
         /* although gcc's Built-in Functions to Perform Arithmetic with
            Overflow Checking is better, but it would require gcc >= 5.0 */
-        long pgsz = sysconf(_SC_PAGE_SIZE);
+        long pgsz = sysconf(_SC_PAGE_SIZE); /* 获取系统页面大小 */
         // pgsz must be > 0 && a power of two
         assert(pgsz > 0 && (((pgsz - 1) & pgsz) == 0));
         u_pgsz = (size_t)((unsigned long)pgsz);
         // it should be always true in real life
         assert(u_pgsz == (unsigned long)pgsz && ((u_pgsz << 1) >> 1) == u_pgsz);
         if (sz <= u_pgsz) {
-            sz = u_pgsz << 1;
+            sz = u_pgsz << 1;  /* 堆栈大小至少为两倍页面大小 */
         } else {
             size_t new_sz;
             if ((sz & (u_pgsz - 1)) != 0) {
@@ -249,7 +249,7 @@ ycor_share_stack_t* ycor_share_stack_new2(size_t sz, char guard_page_enabled) {
             PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         assert_alloc_bool(p->real_ptr != MAP_FAILED);
         p->guard_page_enabled = 1;
-        assert(0 == mprotect(p->real_ptr, u_pgsz, PROT_READ));
+        assert(0 == mprotect(p->real_ptr, u_pgsz, PROT_READ)); /* 守护页只读 */
 
         p->ptr = (void*)(((uintptr_t)p->real_ptr) + u_pgsz);
         p->real_sz = sz;

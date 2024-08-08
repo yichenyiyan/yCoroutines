@@ -112,8 +112,8 @@ struct ycor_s {
 };
 
 
-#define ycor_likely(expr)   (__builtin_expect((expr), 1))
-#define ycor_unlikely(expr) (__builtin_expect((expr), 0))
+#define ycor_likely(expr)   (__builtin_expect(!!(expr), 1))
+#define ycor_unlikely(expr) (__builtin_expect(!!(expr), 0))
 
 #define ycor_assert(expr)       ( (ycor_likely(expr)) ? ((void)0) : (abort()) ) 
 #define ycor_assert_ptr(ptr)    ( (ycor_likely((ptr) != NULL)) ? ((void)0) : (abort()))
@@ -160,15 +160,18 @@ struct ycor_s {
 
 extern void ycor_runtime_test(void);
 extern void ycor_thread_init(ycor_cofuncp_t last_word_cor_fp);
+/* 协程切换 */
 extern void ycorsw(ycor_t* from_cor, ycor_t* to_cor) __asm__("ycorsw");         // asm
+/* 保存 FPU 控制字和 MXCSR 寄存器 */
 extern void ycor_save_fpucw_mxcsr(void* p) __asm__("ycor_save_fpucw_mxcsr");    // asm
+/* 保护协程函数指针 */
 extern void ycor_funcp_protector_asm(void) __asm__("ycor_funcp_protector_asm"); // asm
 extern void ycor_funcp_protector(void);
 extern ycor_share_stack_t* ycor_share_stack_new(size_t sz);
 ycor_share_stack_t* ycor_share_stack_new2(size_t sz, char guard_page_enabled);
 extern void ycor_share_stack_destroy(ycor_share_stack_t* sstk);
 
-
+/* 创建协程 */
 extern ycor_t* ycor_create(
         ycor_t* main_cor,
         ycor_share_stack_t* share_stack,
@@ -179,6 +182,7 @@ extern ycor_t* ycor_create(
 // ycor's Global Thread Local Storage variable 'ycor'
 extern __thread ycor_t* ycor_gtls_cor;
 
+/* 恢复协程 */
 ycor_attr_no_asan
 extern void ycor_resume(ycor_t* resume_cor);
 
@@ -199,10 +203,11 @@ extern void ycor_resume(ycor_t* resume_cor);
     } while(0)
 
 
-#define ycor_get_arg() (ycor_gtls_cor)
+#define ycor_get_arg() (ycor_gtls_cor->arg)
 #define ycor_get_cor() ({ (void)0; ycor_gtls_cor; })
 #define ycor_cor()     ({ (void)0; ycor_gtls_cor; })
 
+/* 销毁协程 */
 extern void ycor_destroy(ycor_t* cor);
 
 #define ycor_is_main_cor(cor)  ({ ((cor)->main_cor) == NULL; })
@@ -214,8 +219,7 @@ extern void ycor_destroy(ycor_t* cor);
         (cor)->share_stack->owner = NULL; \
         (cor)->share_stack->align_validsz = 0; \
         ycor_yield1((cor)); \
-        ycor_assert(0); \ 
-    } while(0)
+        ycor_assert(0); } while(0)
 
 
 #define ycor_exit() \
